@@ -1,7 +1,7 @@
 import argparse
 from huggingface_hub.hf_api import HfFolder
 from utils.helper_functions import get_excel_schema, read_table_file
-from utils.config import TaskEnum, HF_TOKEN
+from utils.config import TaskEnum, HF_TOKEN, BASE_MODEL_NAME
 from models.CodeLlaMa import CodeLlaMa
 from utils.initital_system import load_global_schema
 
@@ -59,7 +59,7 @@ def main():
     HfFolder.save_token(HF_TOKEN["TeeA"])
     # load MATCHA
     # laod LLM
-    codellama_model = CodeLlaMa("")
+    codellama_model = CodeLlaMa(base_model_name=BASE_MODEL_NAME)
     # while True:
     run(CodeLlaMa=codellama_model)
 

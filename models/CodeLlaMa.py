@@ -31,7 +31,7 @@ def find_all_linear_names(model):
 class CodeLlaMa:
     def __init__(self, base_model_name):
         self.SCRIPT = {
-            "sql_query": """<s>[INST] Sinh ra câu sql từ câu hỏi tương ứng với schema được cung cấp [/INST] ###schema: {sample[f'schema_{level}']}, ###câu hỏi: {sample[f'question_{level}']}, ###câu sql: {sample[f'query_{level}']}</s>"""
+            "sql_query": """<s>[INST] Sinh ra câu sql từ câu hỏi tương ứng với schema được cung cấp [/INST] ###schema: {schema}, ###câu hỏi: {question}, ###câu sql: </s>"""
         }
         self.base_model_name = base_model_name
 
@@ -133,20 +133,21 @@ class CodeLlaMa:
         return ""
 
     def sql_query(self, question: str, schema: str):
+        encodeds = self.tokenizer(
+            self.SCRIPT["sql_query"].format(schema=schema, question=question),
+            return_tensors="pt",
+        )
 
-        prompt = f"""[INST] Given an input question, generate a SQL query by choosing one or multiple of the following tables. If not available directly, infer the primary and foreign keys from the schema information above. [/INST] Answer the following question with the context below: ###Context: {schema}, ###Question: {question}, ###Answer: """
-        encodeds = tokenizer(prompt, return_tensors="pt")
-
-        generated_ids = model.generate(
+        generated_ids = self.model.generate(
             inputs=encodeds["input_ids"].to("cuda"),
             attention_mask=encodeds["attention_mask"],
             do_sample=False,
             temperature=0.1,
             top_k=1,
             max_new_tokens=100,
-            eos_token_id=tokenizer.eos_token_id,
-            pad_token_id=tokenizer.pad_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.pad_token_id,
         )
-        decoded = tokenizer.batch_decode(generated_ids)
+        decoded = self.tokenizer.batch_decode(generated_ids)
 
         return decoded[0]

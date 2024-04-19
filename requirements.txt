@@ -1,0 +1,12 @@
+pandas
+bitsandbytes-cuda110
+bitsandbytes
+evaluate
+rouge-score
+nltk
+entence-transformers
+loralib
+datasets
+git+https://github.com/huggingface/peft.git@main
+git+https://github.com/huggingface/accelerate.git@main
+git+https://github.com/huggingface/transformers.git@main

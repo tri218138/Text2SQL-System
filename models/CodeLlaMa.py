@@ -29,11 +29,12 @@ def find_all_linear_names(model):
 
 
 class CodeLlaMa:
-    def __init__(self, base_model_name):
+    def __init__(self, base_model_name, device: str = "cuda"):
         self.SCRIPT = {
-            "sql_query": """<s>[INST] Sinh ra câu sql từ câu hỏi tương ứng với schema được cung cấp [/INST] ###schema: {schema}, ###câu hỏi: {question}, ###câu sql: </s>"""
+            "sql_query": """[INST] Sinh ra câu sql từ câu hỏi tương ứng với schema được cung cấp [/INST] ###schema: {schema}, ###câu hỏi: {question}, ###câu sql: """
         }
         self.base_model_name = base_model_name
+        self.device = device
 
         ### LLM config
         self.model = None
@@ -58,12 +59,12 @@ class CodeLlaMa:
             inputs=encodeds["input_ids"].to("cuda"),
             attention_mask=encodeds["attention_mask"],
             do_sample=False,
-            temperature=0.1,
-            top_k=1,
-            max_new_tokens=100,
+            # temperature=0.1,
+            # top_k=1,
+            max_length=1500,
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.pad_token_id,
-        )
+        ).to(self.device)
 
         decoded = self.tokenizer.batch_decode(generated_ids)
 
@@ -86,19 +87,22 @@ class CodeLlaMa:
             device_map="auto",  # dispatch efficiently the model on the available ressources
             max_memory={i: self.max_memory for i in range(self.n_gpus)},
         )
+
         self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name, use_auth_token=True
+            self.base_model_name, token=True, padding_side="left"
         )
         # tokenizer = BloomTokenizerFast.from_pretrained(model_name, use_auth_token=True)
         ### Needed for LLaMA tokenizer
+        # Expand </s> </s> </s> </s> at the end to fix the max length
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
         if self.retrain_qlora is True:
             peft_model_id_visquad_lora = self.lora_dir
             self.model = PeftModel.from_pretrained(
-                self.model, peft_model_id_visquad_lora, is_trainable=True
+                self.model, peft_model_id_visquad_lora, is_trainable=False
             )
 
+        self.model.to(self.device)
         # modules = find_all_linear_names(self.model)
 
         # if self.lora_rank != 0:

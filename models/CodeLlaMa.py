@@ -44,11 +44,30 @@ class CodeLlaMa:
         self.lora_dir = LORA_DIR
         self.lora_rank = LORA_RANK
 
-    def generate(self, input):
+    def generate(self, _input):
         if self.model is None:
             print("For the first time, loading model is waiting more time")
             self.load_model()
-        return self.model
+
+        encodeds = self.tokenizer(
+            _input,
+            return_tensors="pt",
+        )
+
+        generated_ids = self.model.generate(
+            inputs=encodeds["input_ids"].to("cuda"),
+            attention_mask=encodeds["attention_mask"],
+            do_sample=False,
+            temperature=0.1,
+            top_k=1,
+            max_new_tokens=100,
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.pad_token_id,
+        )
+
+        decoded = self.tokenizer.batch_decode(generated_ids)
+
+        return decoded[0]
 
     def load_model(self):
         print("Loading model...")
@@ -72,7 +91,7 @@ class CodeLlaMa:
         )
         # tokenizer = BloomTokenizerFast.from_pretrained(model_name, use_auth_token=True)
         ### Needed for LLaMA tokenizer
-        self.pad_token = self.eos_token
+        self.tokenizer.pad_token = self.tokenizer.eos_token
 
         if self.retrain_qlora is True:
             peft_model_id_visquad_lora = self.lora_dir
@@ -80,35 +99,35 @@ class CodeLlaMa:
                 self.model, peft_model_id_visquad_lora, is_trainable=True
             )
 
-        modules = find_all_linear_names(self.model)
+        # modules = find_all_linear_names(self.model)
 
-        if self.lora_rank != 0:
-            self.lora_config = LoraConfig(
-                r=self.lora_rank,  # dimension of the updated matrices
-                lora_alpha=256,  # parameter for scaling
-                target_modules=modules,
-                lora_dropout=0.1,  # dropout probability for layers
-                bias="none",
-                task_type="CAUSAL_LM",
-            )
+        # if self.lora_rank != 0:
+        #     self.lora_config = LoraConfig(
+        #         r=self.lora_rank,  # dimension of the updated matrices
+        #         lora_alpha=256,  # parameter for scaling
+        #         target_modules=modules,
+        #         lora_dropout=0.1,  # dropout probability for layers
+        #         bias="none",
+        #         task_type="CAUSAL_LM",
+        #     )
 
-            # 1 - Enabling gradient checkpointing to reduce memory usage during fine-tuning
-        self.model.gradient_checkpointing_enable()
+        # # 1 - Enabling gradient checkpointing to reduce memory usage during fine-tuning
+        # self.model.gradient_checkpointing_enable()
 
-        if self.retrain_qlora is False:
-            # 2 - Using the prepare_model_for_kbit_training method from PEFT
-            self.model = prepare_model_for_kbit_training(self.model)
-            # 3 - apply config
-            try:
-                # If config is exist
-                self.model = get_peft_model(self.model, self.lora_config)
-                self.model.print_trainable_parameters()
-            except:
-                pass
-        else:
-            self.model.enable_input_require_grads()
-            self.model.print_trainable_parameters()
-            # 4 - # Print information about the percentage of trainable parameters
+        # if self.retrain_qlora is False:
+        #     # 2 - Using the prepare_model_for_kbit_training method from PEFT
+        #     self.model = prepare_model_for_kbit_training(self.model)
+        #     # 3 - apply config
+        #     try:
+        #         # If config is exist
+        #         self.model = get_peft_model(self.model, self.lora_config)
+        #         self.model.print_trainable_parameters()
+        #     except:
+        #         pass
+        # else:
+        #     self.model.enable_input_require_grads()
+        #     self.model.print_trainable_parameters()
+        #     # 4 - # Print information about the percentage of trainable parameters
         print("Load model completed")
 
     def response(
@@ -133,21 +152,8 @@ class CodeLlaMa:
         return ""
 
     def sql_query(self, question: str, schema: str):
-        encodeds = self.tokenizer(
-            self.SCRIPT["sql_query"].format(schema=schema, question=question),
-            return_tensors="pt",
+        response = self.generate(
+            _input=self.SCRIPT["sql_query"].format(schema=schema, question=question)
         )
 
-        generated_ids = self.model.generate(
-            inputs=encodeds["input_ids"].to("cuda"),
-            attention_mask=encodeds["attention_mask"],
-            do_sample=False,
-            temperature=0.1,
-            top_k=1,
-            max_new_tokens=100,
-            eos_token_id=self.tokenizer.eos_token_id,
-            pad_token_id=self.tokenizer.pad_token_id,
-        )
-        decoded = self.tokenizer.batch_decode(generated_ids)
-
-        return decoded[0]
+        return response

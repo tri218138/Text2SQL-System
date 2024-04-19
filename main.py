@@ -32,7 +32,7 @@ def run(**kwargs):
         if args.filename is None:
             schema = load_global_schema()
             print(kwargs["CodeLlaMa"].sql_query(question=args.question, schema=schema))
-        if extension in ["xlsx", "csv"]:
+        elif extension in ["xlsx", "csv"]:
             schema = get_excel_schema(args.filename)
             print(kwargs["CodeLlaMa"].sql_query(schema=schema, question=args.question))
 

@@ -10,6 +10,11 @@ def run(**kwargs):
     parser = argparse.ArgumentParser(description="Process filename and question.")
     parser.add_argument("--filename", help="Name of the file to process.", default=None)
     parser.add_argument("--question", help="The question to process.")
+    parser.add_argument(
+        "--input",
+        help="The whole input string (include instruction + schema + question)",
+        required=False,
+    )
 
     args = parser.parse_args()
 
@@ -31,16 +36,26 @@ def run(**kwargs):
     if task is TaskEnum.SQL_QUERY:
         if args.filename is None:
             schema = load_global_schema()
-            print(kwargs["CodeLlaMa"].sql_query(question=args.question, schema=schema))
+            print(
+                kwargs["CodeLlaMa"].chain_of_thought(
+                    schema=schema, question=args.question
+                )
+            )
+            print(kwargs["CodeLlaMa"].sql_query(schema=schema, question=args.question))
         elif extension in ["xlsx", "csv"]:
             schema = get_excel_schema(args.filename)
+            print(
+                kwargs["CodeLlaMa"].chain_of_thought(
+                    schema=schema, question=args.question
+                )
+            )
             print(kwargs["CodeLlaMa"].sql_query(schema=schema, question=args.question))
 
     elif task is TaskEnum.GENERAL_QA:
         if extension in ["png", "jpg"]:
             table_string = kwargs["MATCHA"].response()
             kwargs["CodeLlaMa"].response(
-                question=args.question, table_string=table_string
+                table_string=table_string, question=args.question
             )
         # Run langchain
         pass
@@ -48,7 +63,7 @@ def run(**kwargs):
     elif task is TaskEnum.PLOT_CHART:
         if extension in ["xlsx", "csv"]:
             df = read_table_file(args.filename)
-            kwargs["CodeLlaMa"].plot_chart(question=args.question, table=df)
+            kwargs["CodeLlaMa"].plot_chart(table=df, question=args.question)
         else:
             print("Table not found!")
 

@@ -31,7 +31,8 @@ def find_all_linear_names(model):
 class CodeLlaMa:
     def __init__(self, base_model_name, device: str = "cuda"):
         self.SCRIPT = {
-            "sql_query": """[INST] Sinh ra câu sql từ câu hỏi tương ứng với schema được cung cấp [/INST] ###schema: {schema}, ###câu hỏi: {question}, ###câu sql: """
+            "sql_query": """[INST] Sinh ra câu sql từ câu hỏi tương ứng với schema được cung cấp [/INST] ###schema: {schema}, ###câu hỏi: {question}, ###câu sql: """,
+            "chain_of_thought": """[INST] Trình bày quá trình suy luận từ câu hỏi kết hợp schema để đưa ra câu truy vấn sql phù hợp [/INST] ###schema: {schema}, ###câu hỏi: {question}, ###CoT: """,
         }
         self.base_model_name = base_model_name
         self.device = device
@@ -159,5 +160,12 @@ class CodeLlaMa:
         response = self.generate(
             _input=self.SCRIPT["sql_query"].format(schema=schema, question=question)
         )
+        return response
 
+    def chain_of_thought(self, question: str, schema: str):
+        response = self.generate(
+            _input=self.SCRIPT["chain_of_thought"].format(
+                schema=schema, question=question
+            )
+        )
         return response
